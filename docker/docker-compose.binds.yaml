@@ -1,0 +1,12 @@
+# IsaacLab/docker/docker-compose.binds.yaml
+services:
+  isaac-lab-base:
+    volumes:
+      - type: bind
+        source: ../ext_rsl_rl
+        target: ${DOCKER_ISAACLAB_PATH}/ext_rsl_rl
+  isaac-lab-ros2:
+    volumes:
+      - type: bind
+        source: ../ext_rsl_rl
+        target: ${DOCKER_ISAACLAB_PATH}/ext_rsl_rl

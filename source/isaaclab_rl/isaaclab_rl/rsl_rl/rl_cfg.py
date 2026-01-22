@@ -66,6 +66,25 @@ class RslRlPpoActorCriticRecurrentCfg(RslRlPpoActorCriticCfg):
     rnn_num_layers: int = MISSING
     """The number of RNN layers."""
 
+@configclass
+class RslRlDqnQNetworkCfg:
+    """Configuration for the DQN Q-network."""
+
+    class_name: str = "QNetwork"
+    """The policy class name. Default is QNetwork."""
+
+    obs_normalization: bool = MISSING
+    """Whether to normalize the observation for the Q-network."""
+
+    hidden_dims: list[int] = MISSING
+    """The hidden dimensions of the Q-network."""
+
+    activation: str = MISSING
+    """The activation function for the Q-network."""
+
+    dueling: bool = False
+    """Whether to use a dueling Q-network head. Default is False."""
+
 
 ############################
 # Algorithm configurations #
@@ -128,6 +147,54 @@ class RslRlPpoAlgorithmCfg:
     symmetry_cfg: RslRlSymmetryCfg | None = None
     """The symmetry configuration. Default is None, in which case symmetry is not used."""
 
+@configclass
+class RslRlDqnAlgorithmCfg:
+    """Configuration for the DQN algorithm."""
+
+    class_name: str = "DQN"
+    """The algorithm class name. Default is DQN."""
+
+    replay_buffer_size: int = MISSING
+    """Replay buffer capacity."""
+
+    gamma: float = MISSING
+    """The discount factor."""
+
+    learning_rate: float = MISSING
+    """The learning rate for the Q-network."""
+
+    batch_size: int = MISSING
+    """The batch size for updates."""
+
+    min_buffer_size: int = MISSING
+    """Minimum replay buffer size before learning starts."""
+
+    target_update_interval: int = MISSING
+    """Interval (in update steps) between target network updates."""
+
+    target_update_tau: float | None = None
+    """Soft update coefficient for the target network. If None, use hard updates."""
+
+    epsilon_start: float = MISSING
+    """Initial epsilon for epsilon-greedy exploration."""
+
+    epsilon_end: float = MISSING
+    """Final epsilon for epsilon-greedy exploration."""
+
+    epsilon_decay_steps: int = MISSING
+    """Number of steps to linearly decay epsilon."""
+
+    update_every: int = MISSING
+    """Number of environment steps per update."""
+
+    num_gradient_steps: int = MISSING
+    """Number of gradient steps per update."""
+
+    max_grad_norm: float | None = None
+    """Maximum gradient norm for clipping."""
+
+    double_q: bool = False
+    """Whether to use Double DQN. Default is False."""
 
 #########################
 # Runner configurations #
@@ -238,4 +305,17 @@ class RslRlOnPolicyRunnerCfg(RslRlBaseRunnerCfg):
     """The policy configuration."""
 
     algorithm: RslRlPpoAlgorithmCfg = MISSING
+    """The algorithm configuration."""
+
+@configclass
+class RslRlOffPolicyRunnerCfg(RslRlBaseRunnerCfg):
+    """Configuration of the runner for off-policy algorithms."""
+
+    class_name: str = "OffPolicyRunner"
+    """The runner class name. Default is OffPolicyRunner."""
+
+    policy: RslRlDqnQNetworkCfg = MISSING
+    """The policy configuration."""
+
+    algorithm: RslRlDqnAlgorithmCfg = MISSING
     """The algorithm configuration."""

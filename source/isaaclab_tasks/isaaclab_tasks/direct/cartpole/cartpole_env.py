@@ -28,6 +28,8 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     episode_length_s = 5.0
     action_scale = 100.0  # [N]
     action_space = 1
+    use_discrete_actions = False
+    discrete_action_values = (-1.0, -0.3, -0.1, 0.0, 0.1, 0.3, 1.0)
     observation_space = 4
     state_space = 0
 
@@ -68,6 +70,11 @@ class CartpoleEnv(DirectRLEnv):
 
         self.joint_pos = self.cartpole.data.joint_pos
         self.joint_vel = self.cartpole.data.joint_vel
+        self._discrete_action_values = None
+        if self.cfg.use_discrete_actions:
+            self._discrete_action_values = torch.tensor(
+                self.cfg.discrete_action_values, device=self.device, dtype=torch.float32
+            )
 
     def _setup_scene(self):
         self.cartpole = Articulation(self.cfg.robot_cfg)
@@ -85,7 +92,12 @@ class CartpoleEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
-        self.actions = self.action_scale * actions.clone()
+        if self.cfg.use_discrete_actions:
+            action_ids = actions.to(dtype=torch.int64).view(-1)
+            scaled_actions = self._discrete_action_values[action_ids].unsqueeze(-1)
+            self.actions = self.action_scale * scaled_actions
+        else:
+            self.actions = self.action_scale * actions.clone()
 
     def _apply_action(self) -> None:
         self.cartpole.set_joint_effort_target(self.actions, joint_ids=self._cart_dof_idx)
@@ -150,6 +162,12 @@ class CartpoleEnv(DirectRLEnv):
         self.cartpole.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self.cartpole.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.cartpole.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+
+@configclass
+class CartpoleDiscreteEnvCfg(CartpoleEnvCfg):
+    action_space = {7}
+    use_discrete_actions = True
 
 
 @torch.jit.script

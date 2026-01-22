@@ -58,7 +58,10 @@ class RslRlVecEnvWrapper(VecEnv):
         if hasattr(self.unwrapped, "action_manager"):
             self.num_actions = self.unwrapped.action_manager.total_action_dim
         else:
-            self.num_actions = gym.spaces.flatdim(self.unwrapped.single_action_space)
+            if isinstance(self.unwrapped.single_action_space, gym.spaces.Discrete):
+                self.num_actions = int(self.unwrapped.single_action_space.n)
+            else:
+                self.num_actions = int(gym.spaces.flatdim(self.unwrapped.single_action_space))
 
         # modify the action space to the clip range
         self._modify_action_space()
