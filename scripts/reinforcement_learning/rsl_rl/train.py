@@ -80,6 +80,8 @@ import os
 import time
 from datetime import datetime
 
+import gymnasium as gym
+import torch
 from rsl_rl.runners import DistillationRunner, OffPolicyRunner, OnPolicyRunner
 
 from isaaclab.envs import (
