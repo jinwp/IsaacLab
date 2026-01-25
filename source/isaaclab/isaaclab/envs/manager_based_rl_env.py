@@ -171,6 +171,61 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         """
         # process actions
         self.action_manager.process_action(action.to(self.device))
+        if getattr(self.cfg, "log_action_stats", False):
+            if "log" not in self.extras:
+                self.extras["log"] = {}
+            # Log applied force statistics for joint effort actions (if present)
+            term = self.action_manager._terms.get("joint_effort")
+            if term is not None:
+                processed_actions = term.processed_actions
+                env_id = getattr(self.cfg, "log_action_stats_env_id", None)
+                if env_id is None:
+                    self.extras["log"]["Action/force_mean"] = processed_actions.mean()
+                    self.extras["log"]["Action/force_std"] = processed_actions.std()
+                    self.extras["log"]["Action/force_min"] = processed_actions.min()
+                    self.extras["log"]["Action/force_max"] = processed_actions.max()
+                else:
+                    env_id = int(env_id)
+                    if env_id < 0 or env_id >= processed_actions.shape[0]:
+                        env_id = 0
+                    action_value = processed_actions[env_id]
+                    force_key = f"Action/force_env{env_id}"
+                    force_cmd_key = f"Action/force_cmd_env{env_id}"
+                    force_value = None
+
+                    if getattr(self.cfg, "log_cartpole_state", False):
+                        if not hasattr(self, "_cartpole_log_joint_ids"):
+                            self._cartpole_log_joint_ids = None
+                            try:
+                                asset = self.scene["robot"]
+                                cart_ids, _ = asset.find_joints(["slider_to_cart"])
+                                pole_ids, _ = asset.find_joints(["cart_to_pole"])
+                                if cart_ids and pole_ids:
+                                    self._cartpole_log_joint_ids = (cart_ids[0], pole_ids[0])
+                            except Exception:
+                                self._cartpole_log_joint_ids = None
+                        if self._cartpole_log_joint_ids is not None:
+                            cart_id, pole_id = self._cartpole_log_joint_ids
+                            asset = self.scene["robot"]
+                            # Applied effort is in N for prismatic joints, N*m for revolute joints.
+                            force_value = asset.data.applied_torque[env_id, cart_id].item()
+                            self.extras["log"][f"State/cart_pos_env{env_id}"] = asset.data.joint_pos[
+                                env_id, cart_id
+                            ].item()
+                            pole_angle_rad = asset.data.joint_pos[env_id, pole_id].item()
+                            self.extras["log"][f"State/pole_angle_deg_env{env_id}"] = pole_angle_rad * 180.0 / math.pi
+
+                    if force_value is None:
+                        if action_value.numel() == 1:
+                            force_value = action_value.item()
+                        else:
+                            force_value = action_value.mean().item()
+                    # Always log the commanded effort too (processed action value).
+                    if action_value.numel() == 1:
+                        self.extras["log"][force_cmd_key] = action_value.item()
+                    else:
+                        self.extras["log"][force_cmd_key] = action_value.mean().item()
+                    self.extras["log"][force_key] = force_value
 
         self.recorder_manager.record_pre_step()
 

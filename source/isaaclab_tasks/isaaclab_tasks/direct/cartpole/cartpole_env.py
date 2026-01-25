@@ -30,7 +30,7 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     action_scale = 100.0  # [N]
     action_space = 1
     use_discrete_actions = False
-    discrete_action_values = (-1.0, -0.3, -0.1, 0.0, 0.1, 0.3, 1.0)
+    discrete_action_values = (-0.06, -0.04, -0.02, -0.01, 0.0, 0.01, 0.02, 0.04, 0.06)
     observation_space = 4
     state_space = 0
 
@@ -76,6 +76,16 @@ class CartpoleEnv(DirectRLEnv):
             self._discrete_action_values = torch.tensor(
                 self.cfg.discrete_action_values, device=self.device, dtype=torch.float32
             )
+        # Episodic logging buffers for direct envs (to match manager-based logging style)
+        self._reward_term_names = ("alive", "terminating", "pole_pos", "cart_vel", "pole_vel")
+        self._termination_term_names = ("cart_out_of_bounds", "time_out")
+        self._episode_reward_sums = {
+            name: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+            for name in self._reward_term_names
+        }
+        self._term_dones = torch.zeros((self.num_envs, len(self._termination_term_names)), dtype=torch.bool, device=self.device)
+        self._last_episode_dones = torch.zeros_like(self._term_dones)
+        self.extras["log"] = {}
 
     def _setup_scene(self):
         self.cartpole = Articulation(self.cfg.robot_cfg)
@@ -117,7 +127,7 @@ class CartpoleEnv(DirectRLEnv):
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        total_reward = compute_rewards(
+        reward_terms = compute_reward_terms(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_terminated,
             self.cfg.rew_scale_pole_pos,
@@ -129,7 +139,9 @@ class CartpoleEnv(DirectRLEnv):
             self.joint_vel[:, self._cart_dof_idx[0]],
             self.reset_terminated,
         )
-        return total_reward
+        for key in self._reward_term_names:
+            self._episode_reward_sums[key] += reward_terms[key]
+        return reward_terms["total"]
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         self.joint_pos = self.cartpole.data.joint_pos
@@ -137,12 +149,21 @@ class CartpoleEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._cart_dof_idx]) > self.cfg.max_cart_pos, dim=1)
-        out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
+        # Use max_pole_angle if defined (for discrete cartpole), otherwise default to π/2
+        max_angle = getattr(self.cfg, "max_pole_angle", math.pi / 2)
+        out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > max_angle, dim=1)
+        # Track termination terms for episodic logging
+        self._term_dones[:, 0] = out_of_bounds
+        self._term_dones[:, 1] = time_out
+        done_rows = self._term_dones.any(dim=1).nonzero(as_tuple=True)[0]
+        if done_rows.numel() > 0:
+            self._last_episode_dones[done_rows] = self._term_dones[done_rows]
         return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
         if env_ids is None:
             env_ids = self.cartpole._ALL_INDICES
+        episode_lengths = self.episode_length_buf[env_ids].float().clone()
         super()._reset_idx(env_ids)
 
         joint_pos = self.cartpole.data.default_joint_pos[env_ids]
@@ -163,16 +184,37 @@ class CartpoleEnv(DirectRLEnv):
         self.cartpole.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self.cartpole.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self.cartpole.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+        # Log episodic reward/termination terms for the envs being reset
+        self.extras["log"] = {}
+        episode_lengths_s = episode_lengths * self.step_dt
+        episode_length_s = self.max_episode_length_s
+        episodic_return = torch.zeros(1, device=self.device, dtype=torch.float32)
+        for key in self._reward_term_names:
+            episodic_sum_avg = torch.mean(self._episode_reward_sums[key][env_ids])
+            self.extras["log"]["Episode_Reward/" + key] = episodic_sum_avg / episode_length_s
+            episodic_return += episodic_sum_avg
+            self._episode_reward_sums[key][env_ids] = 0.0
+        self.extras["log"]["Episode_Return/total"] = episodic_return.item()
+        self.extras["log"]["Episode_Length/steps"] = torch.mean(episode_lengths).item()
+        self.extras["log"]["Episode_Length/s"] = torch.mean(episode_lengths_s).item()
+
+        last_episode_done_stats = self._last_episode_dones[env_ids].float().mean(dim=0)
+        for i, key in enumerate(self._termination_term_names):
+            self.extras["log"]["Episode_Termination/" + key] = last_episode_done_stats[i].item()
+        self._last_episode_dones[env_ids] = False
 
 
 @configclass
 class CartpoleDiscreteEnvCfg(CartpoleEnvCfg):
-    action_space = {7}
+    action_space = {9}
     use_discrete_actions = True
+    # Set angle tolerance to match Gym CartPole-v0 (±0.2095 rad = ±12°)
+    # This only affects discrete cartpole, PPO continuous version remains unchanged
+    max_pole_angle = math.pi / 2 # math.radians(24.0)
 
 
 @torch.jit.script
-def compute_rewards(
+def compute_reward_terms(
     rew_scale_alive: float,
     rew_scale_terminated: float,
     rew_scale_pole_pos: float,
@@ -190,4 +232,11 @@ def compute_rewards(
     rew_cart_vel = rew_scale_cart_vel * torch.sum(torch.abs(cart_vel).unsqueeze(dim=1), dim=-1)
     rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
     total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
-    return total_reward
+    return {
+        "alive": rew_alive,
+        "terminating": rew_termination,
+        "pole_pos": rew_pole_pos,
+        "cart_vel": rew_cart_vel,
+        "pole_vel": rew_pole_vel,
+        "total": total_reward,
+    }

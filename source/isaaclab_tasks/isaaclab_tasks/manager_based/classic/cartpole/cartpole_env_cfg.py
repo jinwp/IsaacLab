@@ -174,6 +174,10 @@ class CartpoleEnvCfg(ManagerBasedRLEnvCfg):
         # general settings
         self.decimation = 2
         self.episode_length_s = 5
+        # Log per-env force and cartpole state for debugging
+        self.log_action_stats = True
+        self.log_action_stats_env_id = 100
+        self.log_cartpole_state = True
         # viewer settings
         self.viewer.eye = (8.0, 0.0, 5.0)
         # simulation settings
