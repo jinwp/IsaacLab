@@ -206,11 +206,25 @@ class CartpoleEnv(DirectRLEnv):
 
 @configclass
 class CartpoleDiscreteEnvCfg(CartpoleEnvCfg):
-    action_space = {9}
+    # action_space = 2
+    action_space = {2}
     use_discrete_actions = True
+    # discrete_action_values = (-1.0, -0.5, -0.2, 0.2, 0.5, 1.0)
+    discrete_action_values = (-0.1, 0.1)
+    # discrete_action_values = (-1.0, 0.0, 1.0)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(
+        num_envs=1, env_spacing=4.0, replicate_physics=True, clone_in_fabric=True
+    )
     # Set angle tolerance to match Gym CartPole-v0 (±0.2095 rad = ±12°)
     # This only affects discrete cartpole, PPO continuous version remains unchanged
-    max_pole_angle = math.pi / 2 # math.radians(24.0)
+    max_pole_angle = math.pi / 2
+
+    # Standard Gym Reward: +1 for every step alive, 0 otherwise
+    rew_scale_alive = 1.0
+    # rew_scale_terminated = 0.0
+    # rew_scale_pole_pos = 0.0
+    # rew_scale_cart_vel = 0.0
+    # rew_scale_pole_vel = 0.0
 
 
 @torch.jit.script
