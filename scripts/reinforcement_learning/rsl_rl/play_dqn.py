@@ -39,7 +39,7 @@ if args_cli.video:
 
 # set default checkpoint if not provided
 if args_cli.checkpoint is None:
-    args_cli.checkpoint = "logs/rsl_rl/cartpole_direct_dqn/2026-01-25_17-01-29_dqn/model_11100.pt"
+    args_cli.checkpoint = "logs/rsl_rl/cartpole_showcase_dqn/2026-01-30_04-03-14/model_600.pt"
 
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args

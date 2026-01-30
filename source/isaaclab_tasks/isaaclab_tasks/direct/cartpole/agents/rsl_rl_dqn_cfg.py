@@ -37,3 +37,34 @@ class CartpoleDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
         max_grad_norm=10.0,
         double_q=True,
     )
+
+
+@configclass
+class CartpoleShowcaseDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
+    # Single-environment training tuned for stability.
+    num_steps_per_env = 1
+    max_iterations = 3000
+    save_interval = 100
+    experiment_name = "cartpole_showcase_dqn"
+    policy = RslRlDqnQNetworkCfg(
+        obs_normalization=False,
+        hidden_dims=[128, 128],
+        activation="relu",
+        dueling=False,
+    )
+    algorithm = RslRlDqnAlgorithmCfg(
+        replay_buffer_size=100000,
+        gamma=0.99,
+        learning_rate=1.0e-4,
+        batch_size=64,
+        min_buffer_size=5000,
+        target_update_interval=5000,
+        target_update_tau=None,
+        epsilon_start=0.2,
+        epsilon_end=0.01,
+        epsilon_decay_steps = 220000,
+        update_every=4,
+        num_gradient_steps=1,
+        max_grad_norm=10.0,
+        double_q=True,
+    )

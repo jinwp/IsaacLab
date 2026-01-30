@@ -35,6 +35,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.cartpole_env_cfg:BoxDiscreteEnvCfg",
+        "rsl_rl_dqn_cfg_entry_point": "isaaclab_tasks.direct.cartpole.agents.rsl_rl_dqn_cfg:CartpoleShowcaseDQNRunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_box_discrete_ppo_cfg.yaml",
     },
 )

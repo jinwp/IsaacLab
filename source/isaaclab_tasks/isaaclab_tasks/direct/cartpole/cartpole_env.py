@@ -29,8 +29,6 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     episode_length_s = 5.0
     action_scale = 100.0  # [N]
     action_space = 1
-    use_discrete_actions = False
-    discrete_action_values = (-0.06, -0.04, -0.02, -0.01, 0.0, 0.01, 0.02, 0.04, 0.06)
     observation_space = 4
     state_space = 0
 
@@ -72,9 +70,12 @@ class CartpoleEnv(DirectRLEnv):
         self.joint_pos = self.cartpole.data.joint_pos
         self.joint_vel = self.cartpole.data.joint_vel
         self._discrete_action_values = None
-        if self.cfg.use_discrete_actions:
+        self._use_discrete_actions = getattr(self.cfg, "use_discrete_actions", False)
+        if self._use_discrete_actions:
             self._discrete_action_values = torch.tensor(
-                self.cfg.discrete_action_values, device=self.device, dtype=torch.float32
+                getattr(self.cfg, "discrete_action_values", (-1.0, 0.0, 1.0)),
+                device=self.device,
+                dtype=torch.float32,
             )
         # Episodic logging buffers for direct envs (to match manager-based logging style)
         self._reward_term_names = ("alive", "terminating", "pole_pos", "cart_vel", "pole_vel")
@@ -103,7 +104,7 @@ class CartpoleEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
-        if self.cfg.use_discrete_actions:
+        if self._use_discrete_actions:
             action_ids = actions.to(dtype=torch.int64).view(-1)
             scaled_actions = self._discrete_action_values[action_ids].unsqueeze(-1)
             self.actions = self.action_scale * scaled_actions
@@ -207,10 +208,10 @@ class CartpoleEnv(DirectRLEnv):
 @configclass
 class CartpoleDiscreteEnvCfg(CartpoleEnvCfg):
     # action_space = 2
-    action_space = {2}
+    action_space = {7}
     use_discrete_actions = True
-    # discrete_action_values = (-1.0, -0.5, -0.2, 0.2, 0.5, 1.0)
-    discrete_action_values = (-0.1, 0.1)
+    discrete_action_values = (-1.0, -0.5, -0.2, 0, 0.2, 0.5, 1.0)
+    # discrete_action_values = (-0.1, 0.1)
     # discrete_action_values = (-1.0, 0.0, 1.0)
     scene: InteractiveSceneCfg = InteractiveSceneCfg(
         num_envs=1, env_spacing=4.0, replicate_physics=True, clone_in_fabric=True

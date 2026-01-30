@@ -9,6 +9,7 @@ import os
 import time
 import torch
 import warnings
+import gymnasium as gym
 from tensordict import TensorDict
 
 from rsl_rl.algorithms import DQN
@@ -31,6 +32,14 @@ class OffPolicyRunner:
 
         self.device = device
         self.env = env
+        self._keep_action_dim = False
+        # Some Isaac Lab discrete envs expect actions shaped (num_envs, 1) instead of (num_envs,).
+        try:
+            single_action_space = getattr(self.env.unwrapped, "single_action_space", None)
+            if isinstance(single_action_space, (gym.spaces.Discrete, gym.spaces.MultiDiscrete)):
+                self._keep_action_dim = True
+        except Exception:
+            self._keep_action_dim = False
 
         self._configure_multi_gpu()
 
@@ -79,7 +88,9 @@ class OffPolicyRunner:
                 with torch.inference_mode():
                     start = time.time()
                     actions = self.alg.act(obs)
-                    env_actions = actions.squeeze(-1) if actions.dim() == 2 and actions.shape[-1] == 1 else actions
+                    env_actions = actions
+                    if not self._keep_action_dim and actions.dim() == 2 and actions.shape[-1] == 1:
+                        env_actions = actions.squeeze(-1)
                     obs, rewards, dones, extras = self.env.step(env_actions.to(self.env.device))
                     obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
                     self.alg.process_env_step(obs, rewards, dones, extras)
@@ -112,6 +123,7 @@ class OffPolicyRunner:
                 learning_rate=self.alg.learning_rate,
                 action_std=self.alg.action_std,
                 rnd_weight=None,
+                epsilon=self.alg.epsilon,
             )
 
             self.cfg["num_steps_per_env"] = original_steps_per_env

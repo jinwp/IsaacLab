@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 from gymnasium import spaces
 
 from isaaclab.utils import configclass
@@ -70,6 +72,18 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
 
     observation_space = spaces.Box(low=float("-inf"), high=float("inf"), shape=(4,))  # or for simplicity: 4 or [4]
     action_space = spaces.Discrete(3)  # or for simplicity: {3}
+    # Gym-like cart position termination.
+    max_cart_pos = 2.4
+    # Match Gym-like action magnitude.
+    action_scale = 100.0
+    # Sample initial pole angle uniformly in [-2.86 deg, 2.86 deg].
+    # The base env multiplies this range by pi, so we express it as fractions of pi.
+    initial_pole_angle_range = [-2.86 / 180.0, 2.86 / 180.0]
+    # Terminate when the pole exceeds +/-25 deg.
+    max_pole_angle = math.radians(25.0)
+    # Two-bin action scaling: use smaller force from 0–10 deg, full force from 10–25 deg.
+    action_scale_low_angle_frac = 10.0 / 25.0
+    action_scale_low_frac = 0.3
 
 
 @configclass

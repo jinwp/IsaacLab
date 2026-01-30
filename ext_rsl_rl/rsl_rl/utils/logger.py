@@ -113,6 +113,7 @@ class Logger:
         learning_rate: float,
         action_std: torch.Tensor,
         rnd_weight: float | None,
+        epsilon: float | None = None,
         print_minimal: bool = False,
         width: int = 80,
         pad: int = 40,
@@ -155,6 +156,8 @@ class Logger:
 
             # Log noise std
             self.writer.add_scalar("Policy/mean_noise_std", action_std.mean().item(), it)
+            if epsilon is not None:
+                self.writer.add_scalar("Policy/epsilon", epsilon, it)
 
             # Log performance
             fps = int(collection_size / (collect_time + learn_time))
@@ -208,6 +211,8 @@ class Logger:
 
             # Print noise std
             log_string += f"""{"Mean action noise std:":>{pad}} {action_std.mean().item():.2f}\n"""
+            if epsilon is not None:
+                log_string += f"""{"Epsilon:":>{pad}} {epsilon:.4f}\n"""
 
             # Print episode extras
             if not print_minimal:

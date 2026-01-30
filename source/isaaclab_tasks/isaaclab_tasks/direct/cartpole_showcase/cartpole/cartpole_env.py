@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import math
+
 import gymnasium as gym
 import torch
 
@@ -18,21 +20,33 @@ class CartpoleShowcaseEnv(CartpoleEnv):
         self.actions = actions.clone()
 
     def _apply_action(self) -> None:
+        # Scale action magnitude with two bins based on pole angle.
+        # Small angles still get a minimum force to allow corrective actions.
+        max_angle = getattr(self.cfg, "max_pole_angle", math.pi / 2)
+        low_angle_frac = getattr(self.cfg, "action_scale_low_angle_frac", 0.5)
+        low_scale_frac = getattr(self.cfg, "action_scale_low_frac", 0.3)
+        pole_angle = self.joint_pos[:, self._pole_dof_idx[0]].unsqueeze(dim=1)
+        abs_angle = torch.abs(pole_angle)
+        use_high_scale = abs_angle >= (max_angle * low_angle_frac)
+        low_scale = self.cfg.action_scale * low_scale_frac
+        high_scale = self.cfg.action_scale
+        scaled_action_scale = torch.where(use_high_scale, high_scale, low_scale)
+
         # fundamental spaces
         # - Box
         if isinstance(self.single_action_space, gym.spaces.Box):
-            target = self.cfg.action_scale * self.actions
+            target = scaled_action_scale * self.actions
         # - Discrete
         elif isinstance(self.single_action_space, gym.spaces.Discrete):
             target = torch.zeros((self.num_envs, 1), dtype=torch.float32, device=self.device)
-            target = torch.where(self.actions == 1, -self.cfg.action_scale, target)
-            target = torch.where(self.actions == 2, self.cfg.action_scale, target)
+            target = torch.where(self.actions == 1, -scaled_action_scale, target)
+            target = torch.where(self.actions == 2, scaled_action_scale, target)
         # - MultiDiscrete
         elif isinstance(self.single_action_space, gym.spaces.MultiDiscrete):
             # value
             target = torch.zeros((self.num_envs, 1), dtype=torch.float32, device=self.device)
-            target = torch.where(self.actions[:, [0]] == 1, self.cfg.action_scale / 2.0, target)
-            target = torch.where(self.actions[:, [0]] == 2, self.cfg.action_scale, target)
+            target = torch.where(self.actions[:, [0]] == 1, scaled_action_scale / 2.0, target)
+            target = torch.where(self.actions[:, [0]] == 2, scaled_action_scale, target)
             # direction
             target = torch.where(self.actions[:, [1]] == 0, -target, target)
         else:

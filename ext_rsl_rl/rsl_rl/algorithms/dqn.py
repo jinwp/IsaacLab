@@ -76,6 +76,8 @@ class DQN:
         self.last_actions: torch.Tensor | None = None
         self.intrinsic_rewards = None
 
+        self.has_started_training = False
+
         self.is_multi_gpu = multi_gpu_cfg is not None
         if multi_gpu_cfg is not None:
             self.gpu_world_size = multi_gpu_cfg["world_size"]
@@ -120,7 +122,8 @@ class DQN:
         done_flags = dones.float()
         if "time_outs" in extras:
             time_outs = extras["time_outs"].to(done_flags.device).float()
-            done_flags = done_flags * (1.0 - time_outs)
+            # Only zero out done flag if episode was truncated (timeout), not terminated
+            done_flags = torch.where(time_outs > 0.5, torch.zeros_like(done_flags), done_flags)
 
         self.storage.add(self.last_obs, self.last_actions, rewards, done_flags, obs)
         self.last_obs = None
@@ -130,6 +133,10 @@ class DQN:
     def update(self) -> dict[str, float]:
         if len(self.storage) < self.min_buffer_size:
             return {"q": 0.0}
+
+        if not self.has_started_training:
+            print(f"Replay buffer filled ({len(self.storage)} >= {self.min_buffer_size}). Training started!")
+            self.has_started_training = True
 
         if self.total_steps % self.update_every != 0:
             return {"q": 0.0}
@@ -151,7 +158,8 @@ class DQN:
             q_values = self.policy(obs_batch)
             q_sa = q_values.gather(1, actions_batch.long())
 
-            loss = nn.functional.mse_loss(q_sa, targets)
+            # Huber loss is commonly more stable for DQN than MSE.
+            loss = nn.functional.smooth_l1_loss(q_sa, targets)
 
             self.optimizer.zero_grad()
             loss.backward()
