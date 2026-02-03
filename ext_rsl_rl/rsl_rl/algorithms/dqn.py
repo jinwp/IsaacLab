@@ -15,8 +15,6 @@ from rsl_rl.storage.replay_buffer import ReplayBuffer
 
 
 class DQN:
-    """Deep Q-Network algorithm (https://www.nature.com/articles/nature14236)."""
-
     policy: QNetwork
     target_policy: QNetwork
 
