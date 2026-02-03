@@ -75,7 +75,7 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
     # Gym-like cart position termination.
     max_cart_pos = 2.4
     # Match Gym-like action magnitude.
-    action_scale = 100.0
+    action_scale = 60.0
     # Sample initial pole angle uniformly in [-2.86 deg, 2.86 deg].
     # The base env multiplies this range by pi, so we express it as fractions of pi.
     initial_pole_angle_range = [-2.86 / 180.0, 2.86 / 180.0]
@@ -83,7 +83,7 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
     max_pole_angle = math.radians(25.0)
     # Two-bin action scaling: use smaller force from 0–10 deg, full force from 10–25 deg.
     action_scale_low_angle_frac = 10.0 / 25.0
-    action_scale_low_frac = 0.3
+    action_scale_low_frac = 1.0
 
 
 @configclass

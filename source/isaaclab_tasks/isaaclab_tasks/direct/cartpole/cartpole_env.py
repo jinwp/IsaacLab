@@ -48,14 +48,15 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     # reset
     max_cart_pos = 3.0  # the cart is reset if it exceeds that position [m]
     initial_pole_angle_range = [-0.25, 0.25]  # the range in which the pole angle is sampled from on reset [rad]
+    initial_cart_pos_range = [-0.5, 0.5]  # the range in which the cart position is sampled from on reset [m]
 
     # reward scales
     rew_scale_alive = 1.0
     rew_scale_terminated = -2.0
     rew_scale_pole_pos = -1.0
-    rew_scale_cart_vel = -0.01
-    rew_scale_pole_vel = -0.005
-
+    rew_scale_cart_pos = -0.5
+    rew_scale_cart_vel = 0.0
+    rew_scale_pole_vel = 0.005
 
 class CartpoleEnv(DirectRLEnv):
     cfg: CartpoleEnvCfg
@@ -78,7 +79,7 @@ class CartpoleEnv(DirectRLEnv):
                 dtype=torch.float32,
             )
         # Episodic logging buffers for direct envs (to match manager-based logging style)
-        self._reward_term_names = ("alive", "terminating", "pole_pos", "cart_vel", "pole_vel")
+        self._reward_term_names = ("alive", "terminating", "pole_pos", "cart_pos", "cart_vel", "pole_vel")
         self._termination_term_names = ("cart_out_of_bounds", "time_out")
         self._episode_reward_sums = {
             name: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
@@ -132,6 +133,7 @@ class CartpoleEnv(DirectRLEnv):
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_terminated,
             self.cfg.rew_scale_pole_pos,
+            self.cfg.rew_scale_cart_pos,
             self.cfg.rew_scale_cart_vel,
             self.cfg.rew_scale_pole_vel,
             self.joint_pos[:, self._pole_dof_idx[0]],
@@ -172,6 +174,12 @@ class CartpoleEnv(DirectRLEnv):
             self.cfg.initial_pole_angle_range[0] * math.pi,
             self.cfg.initial_pole_angle_range[1] * math.pi,
             joint_pos[:, self._pole_dof_idx].shape,
+            joint_pos.device,
+        )
+        joint_pos[:, self._cart_dof_idx] += sample_uniform(
+            self.cfg.initial_cart_pos_range[0],
+            self.cfg.initial_cart_pos_range[1],
+            joint_pos[:, self._cart_dof_idx].shape,
             joint_pos.device,
         )
         joint_vel = self.cartpole.data.default_joint_vel[env_ids]
@@ -233,6 +241,7 @@ def compute_reward_terms(
     rew_scale_alive: float,
     rew_scale_terminated: float,
     rew_scale_pole_pos: float,
+    rew_scale_cart_pos: float,
     rew_scale_cart_vel: float,
     rew_scale_pole_vel: float,
     pole_pos: torch.Tensor,
@@ -244,13 +253,15 @@ def compute_reward_terms(
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
     rew_termination = rew_scale_terminated * reset_terminated.float()
     rew_pole_pos = rew_scale_pole_pos * torch.sum(torch.square(pole_pos).unsqueeze(dim=1), dim=-1)
+    rew_cart_pos = rew_scale_cart_pos * torch.sum(torch.square(cart_pos).unsqueeze(dim=1), dim=-1)
     rew_cart_vel = rew_scale_cart_vel * torch.sum(torch.abs(cart_vel).unsqueeze(dim=1), dim=-1)
     rew_pole_vel = rew_scale_pole_vel * torch.sum(torch.abs(pole_vel).unsqueeze(dim=1), dim=-1)
-    total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_vel + rew_pole_vel
+    total_reward = rew_alive + rew_termination + rew_pole_pos + rew_cart_pos + rew_cart_vel + rew_pole_vel
     return {
         "alive": rew_alive,
         "terminating": rew_termination,
         "pole_pos": rew_pole_pos,
+        "cart_pos": rew_cart_pos,
         "cart_vel": rew_cart_vel,
         "pole_vel": rew_pole_vel,
         "total": total_reward,

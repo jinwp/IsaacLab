@@ -12,26 +12,26 @@ from isaaclab_rl.rsl_rl import RslRlDqnAlgorithmCfg, RslRlDqnQNetworkCfg, RslRlO
 class CartpoleDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
     # Single environment training tuned for stability and higher DQN performance.
     num_steps_per_env = 1
-    max_iterations = 8000  # More experience (~100k steps) for DQN stability
+    max_iterations = 10000  # More experience (~100k steps) for DQN stability
     save_interval = 100  # Save every ~5% of training
     experiment_name = "cartpole_direct_dqn"
     policy = RslRlDqnQNetworkCfg(
-        obs_normalization=True,
-        hidden_dims=[256, 256],
+        obs_normalization=False,
+        hidden_dims=[128, 128],
         activation="relu",
-        dueling=True,
+        dueling=False,
     )
     algorithm = RslRlDqnAlgorithmCfg(
-        replay_buffer_size=100000,
-        gamma=0.99,
+        replay_buffer_size=1000000,
+        gamma=0.997,
         learning_rate=1.0e-4,
-        batch_size=128,
-        min_buffer_size=2000,
-        target_update_interval=500,
+        batch_size=1024,
+        min_buffer_size=5000,
+        target_update_interval=3000,
         target_update_tau=None,
-        epsilon_start=1.0,
-        epsilon_end=0.05,
-        epsilon_decay_steps=280000,
+        epsilon_start=0.5,
+        epsilon_end=0.01,
+        epsilon_decay_steps=200000,
         update_every=1,
         num_gradient_steps=4,
         max_grad_norm=10.0,
@@ -43,9 +43,9 @@ class CartpoleDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
 class CartpoleShowcaseDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
     # Single-environment training tuned for stability.
     num_steps_per_env = 1
-    max_iterations = 3000
+    max_iterations = 20000
     save_interval = 100
-    experiment_name = "cartpole_showcase_dqn"
+    experiment_name = "cartpole_apple"
     policy = RslRlDqnQNetworkCfg(
         obs_normalization=False,
         hidden_dims=[128, 128],
@@ -54,16 +54,16 @@ class CartpoleShowcaseDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
     )
     algorithm = RslRlDqnAlgorithmCfg(
         replay_buffer_size=100000,
-        gamma=0.99,
+        gamma=0.999,
         learning_rate=1.0e-4,
-        batch_size=64,
-        min_buffer_size=5000,
-        target_update_interval=5000,
+        batch_size=512,
+        min_buffer_size=2000,
+        target_update_interval=500,
         target_update_tau=None,
-        epsilon_start=0.2,
+        epsilon_start=1.0,
         epsilon_end=0.01,
-        epsilon_decay_steps = 220000,
-        update_every=4,
+        epsilon_decay_steps = 500000,
+        update_every=1,
         num_gradient_steps=1,
         max_grad_norm=10.0,
         double_q=True,
