@@ -85,6 +85,13 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
     action_scale_low_angle_frac = 10.0 / 25.0
     action_scale_low_frac = 1.0
 
+    # rew_scale_alive = 1.0
+    # rew_scale_terminated = 0.0
+    # rew_scale_pole_pos = 0.0
+    # rew_scale_cart_pos = 0.0
+    # rew_scale_cart_vel = 0.0
+    # rew_scale_pole_vel = 0.0
+
 
 @configclass
 class BoxMultiDiscreteEnvCfg(CartpoleEnvCfg):

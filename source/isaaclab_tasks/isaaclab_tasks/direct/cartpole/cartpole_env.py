@@ -51,12 +51,12 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     initial_cart_pos_range = [-0.5, 0.5]  # the range in which the cart position is sampled from on reset [m]
 
     # reward scales
-    rew_scale_alive = 1.0
+    rew_scale_alive = 1.5
     rew_scale_terminated = -2.0
-    rew_scale_pole_pos = -1.0
-    rew_scale_cart_pos = -0.5
+    rew_scale_pole_pos = -5.0
+    rew_scale_cart_pos = -0.15
     rew_scale_cart_vel = 0.0
-    rew_scale_pole_vel = 0.005
+    rew_scale_pole_vel = 0.0
 
 class CartpoleEnv(DirectRLEnv):
     cfg: CartpoleEnvCfg
@@ -176,12 +176,12 @@ class CartpoleEnv(DirectRLEnv):
             joint_pos[:, self._pole_dof_idx].shape,
             joint_pos.device,
         )
-        joint_pos[:, self._cart_dof_idx] += sample_uniform(
-            self.cfg.initial_cart_pos_range[0],
-            self.cfg.initial_cart_pos_range[1],
-            joint_pos[:, self._cart_dof_idx].shape,
-            joint_pos.device,
-        )
+        # joint_pos[:, self._cart_dof_idx] += sample_uniform(
+        #     self.cfg.initial_cart_pos_range[0],
+        #     self.cfg.initial_cart_pos_range[1],
+        #     joint_pos[:, self._cart_dof_idx].shape,
+        #     joint_pos.device,
+        # )
         joint_vel = self.cartpole.data.default_joint_vel[env_ids]
 
         default_root_state = self.cartpole.data.default_root_state[env_ids]
