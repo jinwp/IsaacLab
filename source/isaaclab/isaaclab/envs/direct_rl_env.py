@@ -392,6 +392,28 @@ class DirectRLEnv(gym.Env):
         self.reset_buf = self.reset_terminated | self.reset_time_outs
         self.reward_buf = self._get_rewards()
 
+        # Off-policy algorithms (e.g. DQN) may want to bootstrap across time-limit truncations.
+        # However, this environment auto-resets done envs before returning observations, so the
+        # returned `next_obs` for truncated envs corresponds to a reset state. To avoid bootstrapping
+        # from reset states, we capture the pre-reset observation for truncated envs and expose it
+        # via `extras`. Wrappers/agents can then use it for correct target computation.
+        #
+        # Note: We only provide this payload for infinite-horizon tasks where wrappers mark time-outs
+        # as non-terminal (i.e. `is_finite_horizon=False`), and only when time-outs actually occur.
+        self.extras.pop("terminal_observation", None)
+        self.extras.pop("terminal_observation_ids", None)
+        if (not self.cfg.is_finite_horizon) and torch.any(self.reset_time_outs):
+            time_out_ids = self.reset_time_outs.nonzero(as_tuple=False).squeeze(-1)
+            obs_pre_reset = self._get_observations()
+            # Store only tensor observations (RSL-RL requires tensor observations).
+            terminal_obs = {}
+            for key, value in obs_pre_reset.items():
+                if isinstance(value, torch.Tensor):
+                    terminal_obs[key] = value[time_out_ids].clone()
+            if terminal_obs:
+                self.extras["terminal_observation_ids"] = time_out_ids
+                self.extras["terminal_observation"] = terminal_obs
+
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:

@@ -93,6 +93,28 @@ class OffPolicyRunner:
                         env_actions = actions.squeeze(-1)
                     obs, rewards, dones, extras = self.env.step(env_actions.to(self.env.device))
                     obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
+                    # Per-step Q logging for env-0 (exact values, not means).
+                    q_values = getattr(self.alg, "last_q_values", None)
+                    if q_values is not None:
+                        step_log = extras.setdefault("step_log", {})
+                        num_actions = int(q_values.shape[-1])
+                        for a in range(num_actions):
+                            step_log[f"Step/Q/a{a}"] = float(q_values[0, a].item())
+                        action_ids = actions
+                        if action_ids.dim() == 2 and action_ids.shape[-1] == 1:
+                            action_ids = action_ids.squeeze(-1)
+                        step_log["Step/Policy/action_id"] = float(action_ids[0].item())
+                    # Per-step reward/done/timeout logging for env-0.
+                    step_log = extras.setdefault("step_log", {})
+                    step_log["Step/reward"] = float(rewards[0].item())
+                    step_log["Step/done"] = float(dones[0].item())
+                    if "time_outs" in extras:
+                        try:
+                            step_log["Step/time_out"] = float(extras["time_outs"][0].item())
+                        except Exception:
+                            step_log["Step/time_out"] = 0.0
+                    else:
+                        step_log["Step/time_out"] = 0.0
                     self.alg.process_env_step(obs, rewards, dones, extras)
                     self.logger.process_env_step(rewards, dones, extras, None)
                     collect_time += time.time() - start

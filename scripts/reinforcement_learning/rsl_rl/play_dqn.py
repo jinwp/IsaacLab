@@ -39,7 +39,7 @@ if args_cli.video:
 
 # set default checkpoint if not provided
 if args_cli.checkpoint is None:
-    args_cli.checkpoint = "logs/rsl_rl/cartpole_updated_dqn/2026-02-02_10-46-26/model_16500.pt"
+    args_cli.checkpoint = "logs/rsl_rl/final trial: replay buffer fix: batch size=64: lr=1.0e-3/2026-02-10_03-38-01/model_430.pt"
 
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args

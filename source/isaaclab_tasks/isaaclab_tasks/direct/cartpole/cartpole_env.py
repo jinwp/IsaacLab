@@ -51,10 +51,10 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     initial_cart_pos_range = [-0.5, 0.5]  # the range in which the cart position is sampled from on reset [m]
 
     # reward scales
-    rew_scale_alive = 1.5
-    rew_scale_terminated = -2.0
-    rew_scale_pole_pos = -5.0
-    rew_scale_cart_pos = -0.15
+    rew_scale_alive = 1.0
+    rew_scale_terminated = 0.0
+    rew_scale_pole_pos = 0.0
+    rew_scale_cart_pos = 0.0
     rew_scale_cart_vel = 0.0
     rew_scale_pole_vel = 0.0
 
@@ -114,6 +114,10 @@ class CartpoleEnv(DirectRLEnv):
 
     def _apply_action(self) -> None:
         self.cartpole.set_joint_effort_target(self.actions, joint_ids=self._cart_dof_idx)
+        # Per-step logging for TensorBoard (for debugging off-policy behavior).
+        # We log only env-0 to keep the signal interpretable even when num_envs > 1.
+        step_log = self.extras.setdefault("step_log", {})
+        step_log["Step/Env0/effort"] = float(self.actions[0, 0].item())
 
     def _get_observations(self) -> dict:
         obs = torch.cat(

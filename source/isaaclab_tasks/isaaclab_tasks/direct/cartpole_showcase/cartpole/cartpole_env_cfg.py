@@ -74,8 +74,9 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
     action_space = spaces.Discrete(3)  # or for simplicity: {3}
     # Gym-like cart position termination.
     max_cart_pos = 2.4
+    is_finite_horizon = False
     # Match Gym-like action magnitude.
-    action_scale = 60.0
+    action_scale = 10.0
     # Sample initial pole angle uniformly in [-2.86 deg, 2.86 deg].
     # The base env multiplies this range by pi, so we express it as fractions of pi.
     initial_pole_angle_range = [-2.86 / 180.0, 2.86 / 180.0]
@@ -85,12 +86,12 @@ class BoxDiscreteEnvCfg(CartpoleEnvCfg):
     action_scale_low_angle_frac = 10.0 / 25.0
     action_scale_low_frac = 1.0
 
-    # rew_scale_alive = 1.0
-    # rew_scale_terminated = 0.0
-    # rew_scale_pole_pos = 0.0
-    # rew_scale_cart_pos = 0.0
-    # rew_scale_cart_vel = 0.0
-    # rew_scale_pole_vel = 0.0
+    rew_scale_alive = 1.0
+    rew_scale_terminated = -1.0
+    rew_scale_pole_pos = -0.5
+    rew_scale_cart_pos = -0.5
+    rew_scale_cart_vel = 0.0
+    rew_scale_pole_vel = 0.0
 
 
 @configclass

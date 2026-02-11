@@ -40,7 +40,7 @@ CARTPOLE_CFG = ArticulationCfg(
             joint_names_expr=["slider_to_cart"],
             effort_limit_sim=400.0,
             stiffness=0.0,
-            damping=10.0,
+            damping=0.0,
         ),
         "pole_actuator": ImplicitActuatorCfg(
             joint_names_expr=["cart_to_pole"], effort_limit_sim=400.0, stiffness=0.0, damping=0.0

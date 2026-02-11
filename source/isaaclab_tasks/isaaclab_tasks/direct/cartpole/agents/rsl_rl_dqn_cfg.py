@@ -43,9 +43,9 @@ class CartpoleDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
 class CartpoleShowcaseDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
     # Single-environment training tuned for stability.
     num_steps_per_env = 1
-    max_iterations = 20000
-    save_interval = 100
-    experiment_name = "cartpole_apple"
+    max_iterations = 1600
+    save_interval = 10
+    experiment_name = "final trial: replay buffer fix: batch size=64: lr=1.0e-3"
     policy = RslRlDqnQNetworkCfg(
         obs_normalization=False,
         hidden_dims=[128, 128],
@@ -53,18 +53,18 @@ class CartpoleShowcaseDQNRunnerCfg(RslRlOffPolicyRunnerCfg):
         dueling=False,
     )
     algorithm = RslRlDqnAlgorithmCfg(
-        replay_buffer_size=100000,
-        gamma=0.999,
-        learning_rate=1.0e-4,
-        batch_size=512,
-        min_buffer_size=2000,
+        replay_buffer_size=10000,
+        gamma=0.99,
+        learning_rate=1.0e-3,
+        batch_size=64,
+        min_buffer_size=1000,
         target_update_interval=500,
         target_update_tau=None,
         epsilon_start=1.0,
-        epsilon_end=0.01,
-        epsilon_decay_steps=500000,
+        epsilon_end=0.05,
+        epsilon_decay_steps=10000,
         update_every=1,
         num_gradient_steps=1,
         max_grad_norm=10.0,
-        double_q=True,
+        double_q=False,
     )
