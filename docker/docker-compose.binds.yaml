@@ -6,6 +6,9 @@ services:
         source: ../../ext_rsl_rl
         target: /workspace/external/ext_rsl_rl
       - type: bind
+        source: ../../skrl
+        target: /workspace/external/skrl
+      - type: bind
         source: ../../isaac_so_arm101
         target: /workspace/external/isaac_so_arm101
   isaac-lab-ros2:
@@ -13,6 +16,9 @@ services:
       - type: bind
         source: ../../ext_rsl_rl
         target: /workspace/external/ext_rsl_rl
+      - type: bind
+        source: ../../skrl
+        target: /workspace/external/skrl
       - type: bind
         source: ../../isaac_so_arm101
         target: /workspace/external/isaac_so_arm101
