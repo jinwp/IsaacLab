@@ -3,16 +3,16 @@ services:
   isaac-lab-base:
     volumes:
       - type: bind
-        source: ../ext_rsl_rl
-        target: ${DOCKER_ISAACLAB_PATH}/ext_rsl_rl
+        source: ../../ext_rsl_rl
+        target: /workspace/external/ext_rsl_rl
       - type: bind
-        source: ../isaac_so_arm101
+        source: ../../isaac_so_arm101
         target: /workspace/external/isaac_so_arm101
   isaac-lab-ros2:
     volumes:
       - type: bind
-        source: ../ext_rsl_rl
-        target: ${DOCKER_ISAACLAB_PATH}/ext_rsl_rl
+        source: ../../ext_rsl_rl
+        target: /workspace/external/ext_rsl_rl
       - type: bind
-        source: ../isaac_so_arm101
+        source: ../../isaac_so_arm101
         target: /workspace/external/isaac_so_arm101
